@@ -61,9 +61,9 @@ class StackOverflow extends Serializable {
   def kmeansEta: Double = 20.0D
 
   /** K-means parameter: Maximum iterations */
-//    def kmeansMaxIterations = 1
+    def kmeansMaxIterations = 1
 
-  def kmeansMaxIterations = 120
+//  def kmeansMaxIterations = 120
 
 
   //
@@ -108,7 +108,10 @@ class StackOverflow extends Serializable {
       highScore
     }
 
-    grouped.map(g => (g._2.head._1, answerHighScore(g._2.map(_._2).toArray)))
+    grouped.values.map { g =>
+      assert(g.head._1.postingType == 1)
+      (g.head._1, answerHighScore(g.map(_._2).toArray))
+    }
   }
 
 
@@ -128,7 +131,9 @@ class StackOverflow extends Serializable {
       }
     }
 
-    val res = scored.map { case (question, score) => (firstLangInTag(question.tags, langs).getOrElse(1) * langSpread, score) }
+    val res = scored.map { case (question, score) =>
+      (firstLangInTag(question.tags, langs).getOrElse(-1) * langSpread, score)
+    }
     res.cache()
     res
   }
@@ -286,9 +291,12 @@ class StackOverflow extends Serializable {
     val closestGrouped = closest.groupByKey()
 
     val median = closestGrouped.mapValues { vs =>
-      val (mostCommonIndex, mostCommonCount) = vs.groupBy(_._1).map { case (langIndex, vsForLang) =>
-        (langIndex, vsForLang.size)
-      }.toSeq.maxBy(_._2)
+      val (mostCommonIndex, lamgsLst) = vs.groupBy { case (langIndex, _) =>
+        langIndex
+      }.maxBy { case (_, lstForLang) =>
+        lstForLang.size
+      }
+      val mostCommonCount = lamgsLst.size
       val langLabel: String = langs(mostCommonIndex / langSpread) // most common language in the cluster
     val langPercent: Double = mostCommonCount.toDouble / vs.size * 100 // percent of the questions in the most common language
     val clusterSize: Int = vs.size
